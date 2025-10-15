@@ -1,0 +1,9 @@
+[project]
+name = "meter-reader"
+version = "0.1.0"
+description = "Script to collect Utility Meter Readings from an RTL-SDR device"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "duckdb>=1.4.1",
+]
