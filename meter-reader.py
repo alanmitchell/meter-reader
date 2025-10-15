@@ -203,10 +203,10 @@ con.execute(f"""
         consumption INT
     )
 """)
-try:
-    con.execute(f"CREATE INDEX IF NOT EXISTS idx_{TABLE_NAME}_meter_ts ON {TABLE_NAME}(meter_id, ts)")
-except Exception:
-    pass
+#try:
+#    con.execute(f"CREATE INDEX IF NOT EXISTS idx_{TABLE_NAME}_meter_ts ON {TABLE_NAME}(meter_id, ts)")
+#except Exception:
+#    pass
 
 # ---------------- Optional rtl_tcp Startup ----------------
 if START_RTL_TCP:
@@ -247,7 +247,7 @@ while True:
             continue
 
         ts_cur = time.time()
-        read_cur = float(flds[7])
+        read_cur = int(flds[7])
 
         commod_type_num = int(flds[4])
         commodity = commod_map.get(commod_type_num, 'Elec')
