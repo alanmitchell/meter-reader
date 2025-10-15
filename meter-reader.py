@@ -213,7 +213,7 @@ if START_RTL_TCP:
     try:
         procs['rtl_tcp'] = _start_process([RTL_TCP_CMD])
         logging.info('Started rtl_tcp under script management.')
-        time.sleep(3.0)  # allow TCP server to come up
+        time.sleep(5.0)  # allow TCP server to come up
     except Exception:
         logging.exception('Failed to start rtl_tcp.')
         graceful_shutdown()
