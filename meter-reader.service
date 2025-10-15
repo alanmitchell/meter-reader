@@ -1,0 +1,14 @@
+[Unit]
+Description=Utility Meter Data Collection Script
+After=network.target
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=5
+User=alan
+Group=alan
+ExecStart=/home/alan/meter-reader/.venv/bin/python /home/alan/meter-reader/meter-reader.py
+
+[Install]
+WantedBy=multi-user.target
