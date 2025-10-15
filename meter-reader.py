@@ -227,6 +227,7 @@ except Exception:
     graceful_shutdown()
 
 # ---------------- Main Loop ----------------
+ts_last_checkpoint = 0      # tracks when last flush of the .wal occurred in duckdb
 while True:
     line = ''
     try:
@@ -275,6 +276,11 @@ while True:
             con.commit()
             logging.debug('DuckDB insert: %s %s %s %s', ts_store.isoformat(), meter_id, commodity, read_cur)
             set_last(meter_id, ts_cur, read_cur)
+
+        if ts_cur > ts_last_checkpoint + 60:
+            # flush .wal every minute
+            con.execute("CHECKPOINT")
+            ts_last_checkpoint = ts_cur
 
     except KeyboardInterrupt:
         graceful_shutdown()
