@@ -1,0 +1,3 @@
+#!/bin/bash
+duckdb meter_reader.duckdb < sql.txt
+

@@ -1,0 +1,17 @@
+SELECT meter_id, commodity, count(*) AS rec_count, 
+       (EXTRACT(EPOCH FROM (max(ts) - min(ts))) / 3600.0 / 24.0) AS period_days
+  FROM meter_readings 
+  GROUP BY meter_id, commodity
+  ORDER BY rec_count DESC;
+
+SELECT DATE_TRUNC('day', ts) as day, count(*) as rec_count
+  FROM meter_readings
+  GROUP BY day
+  ORDER BY day DESC
+  LIMIT 5;
+
+SELECT DATE_TRUNC('hour', ts) as hour, count(*) as rec_count
+  FROM meter_readings
+  GROUP BY hour
+  ORDER BY hour DESC
+  LIMIT 5;

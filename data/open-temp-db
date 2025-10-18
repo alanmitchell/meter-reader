@@ -1,0 +1,3 @@
+#!/bin/bash
+cp meter_reader.duckdb temp.db
+duckdb temp.db
