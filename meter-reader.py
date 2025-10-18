@@ -184,6 +184,21 @@ def graceful_shutdown(signum=None, frame=None):
     if signum is not None:
         sys.exit(0)
 
+def write_reading(ts, meter_id, commodity, consumption):
+    """Writes one reading into the database. Opens and closes the 
+    database connection.
+    """
+    sql = "INSERT INTO meter_readings VALUES (?, ?, ?, ?)"
+    con = duckdb.connect(DB_PATH)              # read_only=False (default)
+    try:
+        con.execute("BEGIN")
+        con.execute(sql, (datetime.fromtimestamp(ts, tz=timezone.utc), meter_id, commodity, consumption))
+        con.execute("COMMIT")
+        # Make latest changes durable/visible (optional but useful for readers)
+        con.execute("CHECKPOINT")              # or PRAGMA force_checkpoint;
+    finally:
+        con.close()
+
 # If process is being killed, go through shutdown process
 signal.signal(signal.SIGTERM, graceful_shutdown)
 signal.signal(signal.SIGINT, graceful_shutdown)
@@ -194,19 +209,15 @@ db_dir = os.path.dirname(DB_PATH)
 if db_dir and not os.path.isdir(db_dir):
     os.makedirs(db_dir, exist_ok=True)
 
-con = duckdb.connect(DB_PATH)
-con.execute(f"""
-    CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-        ts TIMESTAMP,          -- UTC timestamp when reading recorded
-        meter_id INT,
-        commodity TEXT,
-        consumption INT
-    )
-""")
-#try:
-#    con.execute(f"CREATE INDEX IF NOT EXISTS idx_{TABLE_NAME}_meter_ts ON {TABLE_NAME}(meter_id, ts)")
-#except Exception:
-#    pass
+with duckdb.connect(DB_PATH) as con:
+    con.execute(f"""
+        CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
+            ts TIMESTAMPTZ,
+            meter_id INT,
+            commodity TEXT,
+            consumption INT
+        )
+    """)
 
 # ---------------- Optional rtl_tcp Startup ----------------
 if START_RTL_TCP:
@@ -258,29 +269,15 @@ while True:
         ts_last, _read_last = get_last(meter_id)
         print(meter_id, commodity, read_cur)
         if ts_last is None:
+            write_reading(ts_cur, meter_id, commodity, read_cur)
             set_last(meter_id, ts_cur, read_cur)
-            con.execute(
-                f"INSERT INTO {TABLE_NAME} (ts, meter_id, commodity, consumption) VALUES (?, ?, ?, ?)",
-                (datetime.fromtimestamp(ts_cur, tz=timezone.utc), meter_id, commodity, read_cur)
-            )
-            con.commit()
             logging.info('First stored reading for Meter #%s: %s (%s)', meter_id, read_cur, commodity)
             continue
 
         if ts_cur > ts_last + POST_INTERVAL_SEC:
-            ts_store = datetime.fromtimestamp(ts_cur, tz=timezone.utc)
-            con.execute(
-                f"INSERT INTO {TABLE_NAME} (ts, meter_id, commodity, consumption) VALUES (?, ?, ?, ?)",
-                (ts_store, meter_id, commodity, read_cur)
-            )
-            con.commit()
-            logging.debug('DuckDB insert: %s %s %s %s', ts_store.isoformat(), meter_id, commodity, read_cur)
+            write_reading(ts_cur, meter_id, commodity, read_cur)
+            logging.debug('DuckDB insert: %s %s %s', meter_id, commodity, read_cur)
             set_last(meter_id, ts_cur, read_cur)
-
-        if ts_cur > ts_last_checkpoint + 60:
-            # flush .wal every minute
-            con.execute("CHECKPOINT")
-            ts_last_checkpoint = ts_cur
 
     except KeyboardInterrupt:
         graceful_shutdown()
