@@ -1,0 +1,12 @@
+#!/bin/bash
+echo "Last Meter Reading Saved:"
+duckdb meter_reader.duckdb -s "SELECT EXTRACT(EPOCH FROM (NOW() - max(ts))) as seconds_ago from meter_readings"
+
+duckdb meter_reader.duckdb -s "COPY(SELECT meter_id || ' ' || commodity, count(*) FROM meter_readings GROUP BY 1 ORDER BY 2 DESC) TO '/dev/stdout' WITH (FORMAT csv)" \
+  | uplot bar -d, -H -t "Record Count by Meter"
+
+duckdb meter_reader.duckdb -s "COPY(SELECT DATE_TRUNC('hour', ts), count(*) FROM meter_readings GROUP BY 1 ORDER BY 1 DESC LIMIT 8) TO '/dev/stdout' WITH (FORMAT csv)" \
+  | uplot bar -d, -H -t "Record Count Recent Hours"
+
+duckdb meter_reader.duckdb -s "COPY(SELECT DATE_TRUNC('day', ts), count(*) FROM meter_readings GROUP BY 1 ORDER BY 1 DESC LIMIT 8) TO '/dev/stdout' WITH (FORMAT csv)" \
+  | uplot bar -d, -H -t "Record Count Recent Days"
